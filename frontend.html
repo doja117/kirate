@@ -1,0 +1,126 @@
+<body>
+    Todo title <input id="title" /> 
+    Todo Description <input id="description" />
+    Todo Completed <input id="completed" type="checkbox"/>
+    <button id="submitBtn">Submit</button>
+    <div id="todoList"></div>
+  
+    <script>
+      // Function to fetch and display todos
+      function fetchTodos() {
+        fetch("http://localhost:3000/todos", { method: "GET" })
+          .then((response) => {
+            if (!response.ok) throw new Error('Network response was not ok');
+            return response.json();
+          })
+          .then((data) => {
+            const list = document.getElementById("todoList");
+            list.innerHTML =
+              "<ul>" +
+              data
+                .map(
+                  (todo) => `
+                    <li>
+                      ${todo.title} - ${todo.description || todo.desc} (${todo.completed ? "✓" : "✗"})
+                      <button class="deleteBtn" data-id="${todo.id}">Delete</button>
+                    </li>
+                  `
+                )
+                .join("") +
+              "</ul>";
+  
+            // Add event listeners to all delete buttons
+            document.querySelectorAll('.deleteBtn').forEach(button => {
+              button.addEventListener('click', function() {
+                const todoId = this.getAttribute('data-id');
+                deleteTodo(todoId);
+              });
+            });
+
+            // Add event listeners to all toggle buttons
+            document.querySelectorAll('.toggleBtn').forEach(button => {
+              button.addEventListener('click', function() {
+                const todoId = this.getAttribute('data-id');
+                toggleTodo(todoId);
+              });
+            });
+          })
+          .catch((error) => {
+            console.error("Error fetching todos:", error);
+          });
+      }
+  
+      // Function to delete a todo
+      function deleteTodo(id) {
+        fetch(`http://localhost:3000/todos/${id}`, {
+          method: "DELETE"
+        })
+        .then(response => {
+          if (!response.ok) throw new Error('Failed to delete todo');
+          fetchTodos(); // Refresh the todo list
+        })
+        .catch(error => {
+          console.error('Error:', error);
+        });
+      }
+
+      // Function to toggle todo completion status
+      function toggleTodo(id) {
+        fetch(`http://localhost:3000/todos/${id}/toggle`, {
+          method: "PATCH"
+        })
+        .then(response => {
+          if (!response.ok) throw new Error('Failed to toggle todo');
+          fetchTodos(); // Refresh the todo list
+        })
+        .catch(error => {
+          console.error('Error:', error);
+        });
+      }
+  
+      // Load todos when page loads
+      fetchTodos();
+  
+      // Handle form submission
+      document.getElementById("submitBtn").addEventListener("click", () => {
+        const title = document.getElementById("title").value;
+        const description = document.getElementById("description").value;
+        const completed = document.getElementById('completed').checked; // Fixed checkbox handling
+        
+        if (!title) {
+          return;
+        }
+
+        const todoData = {
+          title: title,
+          description: description,
+          completed: completed // Directly use the checked status
+        };
+  
+        fetch("http://localhost:3000/todos", {
+          method: "POST",
+          headers: {
+            "Content-Type": "application/json",
+          },
+          body: JSON.stringify(todoData),
+        })
+          .then(async (response) => {
+            const text = await response.text();
+            if (!response.ok) {
+              throw new Error(text || 'Network response was not ok');
+            }
+            return text ? JSON.parse(text) : {};
+          })
+          .then((data) => {
+            document.getElementById("title").value = "";
+            document.getElementById("description").value = "";
+            document.getElementById("completed").checked = false;
+            fetchTodos(); // Refresh the todo list
+          })
+          .catch((error) => {
+            console.error("Error:", error);
+            fetchTodos()
+          });
+      });
+    </script>
+</body>
